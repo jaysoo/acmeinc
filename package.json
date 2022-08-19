@@ -9,6 +9,7 @@
   },
   "private": true,
   "dependencies": {
+    "@actions/cache": "^3.0.4",
     "@nrwl/next": "14.6.0-beta.6",
     "core-js": "^3.6.5",
     "next": "12.2.3",

@@ -1,25 +1,95 @@
-name: CI
+name: Run NX Jobs
 on:
-  push:
-    branches:
-      - main
   pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+env:
+  NX_BRANCH: ${{ github.event.pull_request.head.ref || github.ref_name }}
+  NX_RUN_GROUP: ${{ github.run_id }}
+  NX_CLOUD_DISTRIBUTED_EXECUTION: 'true'
 
 jobs:
-  main:
-    name: Nx Cloud - Main Job
-    uses: nrwl/ci/.github/workflows/nx-cloud-main.yml@v0.6
-    with:
-      number-of-agents: 3
-      parallel-commands: |
-        npx nx-cloud record -- npx nx workspace-lint
-        npx nx-cloud record -- npx nx format:check
-      parallel-commands-on-agents: |
-        npx nx affected --target=test --parallel=3 --ci --code-coverage
+  nx-agent:
+    name: nx-agent
 
-  agents:
-    name: Nx Cloud - Agents
-    uses: nrwl/ci/.github/workflows/nx-cloud-agents.yml@v0.6
-    with:
-      number-of-agents: 3
+    runs-on: ubuntu-latest
 
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: ⚙️ Use Node.js
+        id: setup-node
+        uses: actions/setup-node@v3
+        with:
+          node-version: '16.x'
+          cache: yarn
+
+      - name: 📦 Install dependencies
+        run: yarn install --immutable --mode=skip-build
+
+      - name: 🤖 Start Nx Agent ${{ matrix.agent }}
+        run: ./node_modules/.bin/nx-cloud start-agent
+
+  nx:
+    name: Run nx commands
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: ⚙️ Use Node.js
+        id: setup-node
+        uses: actions/setup-node@v3
+        with:
+          node-version: '16.x'
+          cache: yarn
+
+      - name: 📦 Install dependencies
+        run: yarn install --immutable --mode=skip-build
+
+      - name: ☁ Start Nx CI Run
+        run: npx nx-cloud start-ci-run
+
+      - name: Cache Coverage
+        id: cache-coverage
+        uses: actions/cache@v3
+        with:
+          path: coverage
+          key: coverage-${{ github.sha }}
+          restore-keys: |
+            coverage-${{ github.sha }}
+            coverage-
+
+      - name: Generate Initial Test Coverage
+        run: |
+          if [ ! -d "coverage" ]; then ./node_modules/.bin/nx run-many --target=test --all --codeCoverage; fi
+
+      - name: ✅ Test and Lint (PR)
+        if: github.ref != 'refs/heads/main'
+        uses: JamesHenry/parallel-bash-commands@v0.1
+        with:
+          cmd1: ./node_modules/.bin/nx affected --base=origin/master --target=test --parallel --codeCoverage
+
+      - name: ✅ Test and Lint (main)
+        if: github.ref == 'refs/heads/main'
+        uses: JamesHenry/parallel-bash-commands@v0.1
+        with:
+          cmd1: ./node_modules/.bin/nx affected --base=${{ steps.last_successful_commit.outputs.commit_hash }} --target=test --parallel --codeCoverage
+
+      - name: List
+        uses: JamesHenry/parallel-bash-commands@v0.1
+        with:
+          cmd1: ls -lsa
+
+      #      - name: 🚦 Codecov
+      #        uses: codecov/codecov-action@v3.1.0
+      #        with:
+      #          token: ${{ secrets.CODECOV_TOKEN }}
+      #          files: ./coverage/lcov.info
+
+      - name: 🙅🏼 Stop Nx Agents
+        if: always() # also stop nx agents if commands fail or get cancelled
+        run: npx nx-cloud stop-all-agents
