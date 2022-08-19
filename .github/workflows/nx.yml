@@ -32,7 +32,7 @@ jobs:
         run: yarn install --immutable --mode=skip-build
 
       - name: 🤖 Start Nx Agent ${{ matrix.agent }}
-        run: ./node_modules/.bin/nx-cloud start-agent
+        run: npx nx-cloud start-agent
 
   nx:
     name: Run nx commands
@@ -57,54 +57,56 @@ jobs:
       - name: ☁ Start Nx CI Run
         run: npx nx-cloud start-ci-run
 
-      - name: Coverage Cache (PR)
+      - name: Test Coverage Cache (PR)
         if: github.ref != 'refs/heads/main'
-        id: coverage-cache-pr
+        id: test-coverage-cache-pr
         uses: actions/cache@v3
         with:
           path: coverage
-          key: coverage-pr-${{ github.sha }}
+          key: test-coverage-pr-${{ github.sha }}
           restore-keys: |
-            coverage-pr-${{ github.sha }}
-            coverage-main
+            test-coverage-pr-${{ github.sha }}
+            test-coverage-main
 
-      - name: Coverage Cache (main)
+      - name: Test Coverage Cache (main)
         if: github.ref == 'refs/heads/main'
-        id: coverage-cache-main
+        id: test-coverage-cache-main
         uses: actions/cache@v3
         with:
           path: coverage
-          key: coverage-main
-          restore-keys: |
-            coverage-main
+          key: test-coverage-main
 
       - name: Generate Initial Test Coverage
         if: github.ref == 'refs/heads/main'
         run: |
-          if [ ! -d "coverage" ]; then ./node_modules/.bin/nx run-many --target=test --all --codeCoverage; fi
+          if [ ! -d "coverage" ]; then echo "Generating initial test coverage..."; npx nx run-many --target=test --all --codeCoverage --coverageReporters=json; fi
+
+      - name: 🪲 Debug Coverage (from cache)
+        run: tree coverage -L 3
 
       - name: ✅ Test and Lint (PR)
         if: github.ref != 'refs/heads/main'
         uses: JamesHenry/parallel-bash-commands@v0.1
         with:
-          cmd1: ./node_modules/.bin/nx affected --base=origin/main --target=test --parallel --codeCoverage
+          cmd1: npx nx affected --base=origin/main --target=test --parallel --codeCoverage --coverageReporters=json
 
       - name: ✅ Test and Lint (main)
         if: github.ref == 'refs/heads/main'
         uses: JamesHenry/parallel-bash-commands@v0.1
         with:
-          cmd1: ./node_modules/.bin/nx affected --base=${{ steps.last_successful_commit.outputs.commit_hash }} --target=test --parallel --codeCoverage
+          cmd1: npx nx affected --base=${{ steps.last_successful_commit.outputs.commit_hash }} --target=test --parallel --codeCoverage --coverageReporters=json
 
-      - name: List
-        uses: JamesHenry/parallel-bash-commands@v0.1
+      - name: 🪲 Debug Coverage (updated)
+        run: tree coverage -L 3
+
+      - name: 🧬 Merge coverage reports
+        run: |
+          node ./tools/scripts/coverage-merge.js
+
+      - name: 🚦 Codecov
+        uses: codecov/codecov-action@v3.1.0
         with:
-          cmd1: du coverage
-
-      #      - name: 🚦 Codecov
-      #        uses: codecov/codecov-action@v3.1.0
-      #        with:
-      #          token: ${{ secrets.CODECOV_TOKEN }}
-      #          files: ./coverage/lcov.info
+          files: ./coverage/coverage-final.json
 
       - name: 🙅🏼 Stop Nx Agents
         if: always() # also stop nx agents if commands fail or get cancelled
