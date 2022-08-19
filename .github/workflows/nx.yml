@@ -16,6 +16,15 @@ jobs:
         npx nx-cloud record -- npx nx format:check
       parallel-commands-on-agents: |
         npx nx affected --target=test --parallel=3 --ci --code-coverage
+      init-commands: |
+        pwd
+        ls -l tools
+        ls -l tools/scripts
+        node tools/scripts/restore-cache.js
+        ls -l
+      final-commands: |
+        ls -l
+        node tools/scripts/save-cache.js
 
   agents:
     name: Nx Cloud - Agents
@@ -23,3 +32,18 @@ jobs:
     with:
       number-of-agents: 3
 
+  coverage:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Cache coverage
+        id: cache-coverage
+        uses: actions/cache@v3
+        with:
+          path: cache-coverage
+          key: coverage-output
+      - name: Cache hit
+        if: steps.cache-coverage.outputs.cache-hit == 'true'
+        run: echo Cache hit
+      - name: Cache miss
+        if: steps.cache-coverage.outputs.cache-hit != 'true'
+        run: echo Cache miss
