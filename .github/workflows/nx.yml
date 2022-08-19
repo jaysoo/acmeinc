@@ -81,7 +81,7 @@ jobs:
       - name: Generate Initial Test Coverage
         if: github.ref == 'refs/heads/main'
         run: |
-          if [ ! -d "coverage" ]; then ./node_modules/.bin/nx run-many --target=test --all --codeCoverage; fi
+          if [ ! -d "coverage" ]; then echo "Generating initial test coverage..."; ./node_modules/.bin/nx run-many --target=test --all --codeCoverage; fi
 
       - name: ✅ Test and Lint (PR)
         if: github.ref != 'refs/heads/main'
@@ -95,10 +95,8 @@ jobs:
         with:
           cmd1: ./node_modules/.bin/nx affected --base=${{ steps.last_successful_commit.outputs.commit_hash }} --target=test --parallel --codeCoverage
 
-      - name: List
-        uses: JamesHenry/parallel-bash-commands@v0.1
-        with:
-          cmd1: du coverage
+      - name: Debug coverage
+        run: du coverage
 
       #      - name: 🚦 Codecov
       #        uses: codecov/codecov-action@v3.1.0
