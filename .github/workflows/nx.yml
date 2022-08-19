@@ -18,6 +18,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
 
       - name: ⚙️ Use Node.js
         id: setup-node
@@ -39,6 +41,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
 
       - name: ⚙️ Use Node.js
         id: setup-node
@@ -53,17 +57,29 @@ jobs:
       - name: ☁ Start Nx CI Run
         run: npx nx-cloud start-ci-run
 
-      - name: Cache Coverage
-        id: cache-coverage
+      - name: Coverage Cache (PR)
+        if: github.ref != 'refs/heads/main'
+        id: coverage-cache-pr
         uses: actions/cache@v3
         with:
           path: coverage
-          key: coverage-${{ github.sha }}
+          key: coverage-pr-${{ github.sha }}
           restore-keys: |
-            coverage-${{ github.sha }}
-            coverage-
+            coverage-pr-${{ github.sha }}
+            coverage-main
+
+      - name: Coverage Cache (main)
+        if: github.ref == 'refs/heads/main'
+        id: coverage-cache-main
+        uses: actions/cache@v3
+        with:
+          path: coverage
+          key: coverage-main
+          restore-keys: |
+            coverage-main
 
       - name: Generate Initial Test Coverage
+        if: github.ref == 'refs/heads/main'
         run: |
           if [ ! -d "coverage" ]; then ./node_modules/.bin/nx run-many --target=test --all --codeCoverage; fi
 
@@ -71,7 +87,7 @@ jobs:
         if: github.ref != 'refs/heads/main'
         uses: JamesHenry/parallel-bash-commands@v0.1
         with:
-          cmd1: ./node_modules/.bin/nx affected --base=origin/master --target=test --parallel --codeCoverage
+          cmd1: ./node_modules/.bin/nx affected --base=origin/main --target=test --parallel --codeCoverage
 
       - name: ✅ Test and Lint (main)
         if: github.ref == 'refs/heads/main'
@@ -82,7 +98,7 @@ jobs:
       - name: List
         uses: JamesHenry/parallel-bash-commands@v0.1
         with:
-          cmd1: ls -lsa
+          cmd1: du coverage
 
       #      - name: 🚦 Codecov
       #        uses: codecov/codecov-action@v3.1.0
