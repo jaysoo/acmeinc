@@ -7,4 +7,9 @@ describe('Lib2', () => {
     const { baseElement } = render(<Lib2 />);
     expect(baseElement).toBeTruthy();
   });
+
+  it('should render secret', () => {
+    const { baseElement } = render(<Lib2 showSecret={true} />);
+    expect(baseElement.innerHTML).toMatch(/secret/);
+  });
 });
