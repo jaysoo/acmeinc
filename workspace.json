@@ -5,7 +5,6 @@
     "demo": "apps/demo",
     "demo-e2e": "apps/demo-e2e",
     "lib1": "libs/lib1",
-    "lib2": "libs/lib2",
-    "lib3": "libs/lib3"
+    "lib2": "libs/lib2"
   }
 }
