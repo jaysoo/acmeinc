@@ -112,6 +112,11 @@ jobs:
         with:
           files: ./coverage/coverage-final.json
 
+      - name: 🧬 Remove stale coverage (main)
+        if: github.ref == 'refs/heads/main'
+        run: |
+          node ./tools/scripts/coverage-clean.js
+
       - name: 🙅🏼 Stop Nx Agents
         if: always() # also stop nx agents if commands fail or get cancelled
         run: npx nx-cloud stop-all-agents

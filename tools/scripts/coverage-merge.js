@@ -1,24 +1,18 @@
 const { readJsonSync } = require('fs-extra');
-const { join } = require('path');
+const { dirname, join, relative } = require('path');
 const { sync } = require('glob');
 const { createCoverageMap } = require('istanbul-lib-coverage');
 const { create: createReport } = require('istanbul-reports');
-const { createContext, summarizers } = require('istanbul-lib-report');
+const { createContext } = require('istanbul-lib-report');
+const { createProjectGraphAsync } = require('./util');
 
-if (require.main === module) {
-  main();
-}
-
-function main() {
-  const reportFiles = getReportFiles();
-  console.log('ReportFiles', reportFiles);
+async function main() {
+  const reportFiles = await getReportFiles();
   const reporters = ['json'];
   const coverageMap = createCoverageMap({});
 
   reportFiles.forEach((file) => {
-    const content = readJsonSync(file);
-    const coverageData = unnestHtmlCoverageData(content);
-    coverageMap.merge(coverageData);
+    coverageMap.merge(readJsonSync(file));
   });
 
   const context = createContext({
@@ -36,24 +30,31 @@ function main() {
   });
 }
 
-function getReportFiles() {
-  const files = sync(join(__dirname, '../../coverage/**/coverage*.json'));
+async function getReportFiles() {
+  const graph = await createProjectGraphAsync();
+  const expectedCoverageOutputs = new Set();
+  Object.values(graph.nodes).forEach(({ data }) => {
+    if (data.targets && data.targets.test && data.targets.test.outputs) {
+      expectedCoverageOutputs.add(data.targets.test.outputs[0]);
+    }
+  });
+
+  const root = join(__dirname, '../..');
+  const files = sync(join(root, 'coverage/**/coverage*.json'));
   if (files.length > 0) {
-    // Filter out the merged report.
-    return files.filter((x) => !x.endsWith('coverage/coverage-final.json'));
+    return (
+      files
+        // Filter out the merged report.
+        .filter((x) => !x.endsWith('coverage/coverage-final.json'))
+        // Filter out stale reports (moved or removed).
+        .filter((x) => {
+          const dir = dirname(relative(root, x));
+          return expectedCoverageOutputs.has(dir);
+        })
+    );
   } else {
     throw new Error('No coverage files found!');
   }
 }
 
-function unnestHtmlCoverageData(json) {
-  return Object.keys(json).reduce((acc, k) => {
-    const v = json[k];
-    if (typeof v.data !== 'undefined') {
-      acc[k] = v.data;
-    } else {
-      acc[k] = v;
-    }
-    return acc;
-  }, {});
-}
+main();
