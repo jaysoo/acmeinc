@@ -1,4 +1,4 @@
-name: Run NX Jobs
+name: Nx
 on:
   pull_request:
     branches: [main]
@@ -6,13 +6,17 @@ on:
     branches: [main]
 
 env:
+  NX_DAEMON: false
   NX_BRANCH: ${{ github.event.pull_request.head.ref || github.ref_name }}
   NX_RUN_GROUP: ${{ github.run_id }}
   NX_CLOUD_DISTRIBUTED_EXECUTION: 'true'
 
 jobs:
   nx-agent:
-    name: nx-agent
+    strategy:
+      matrix:
+        agent: [1, 2]
+    name: Nx Cloud Agent ${{ matrix.agent}}
 
     runs-on: ubuntu-latest
 
@@ -35,7 +39,7 @@ jobs:
         run: npx nx-cloud start-agent
 
   nx:
-    name: Run nx commands
+    name: Nx Cloud Main
     runs-on: ubuntu-latest
     timeout-minutes: 20
 
