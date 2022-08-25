@@ -1,3 +1,4 @@
+const chalk = require('chalk');
 const { rmSync } = require('fs-extra');
 const { dirname, join, relative } = require('path');
 const { sync } = require('glob');
@@ -22,6 +23,11 @@ async function main() {
 
       const dir = dirname(relative(root, x));
       if (!expectedCoverageOutputs.has(dir)) {
+        console.log(
+          `Removing stale coverage ${chalk.bold(
+            dir
+          )}. Reason: Project removed from workspace.`
+        );
         rmSync(join(root, dir), { recursive: true });
       }
     });
