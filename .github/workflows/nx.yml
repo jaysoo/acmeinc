@@ -112,7 +112,7 @@ jobs:
         with:
           files: ./coverage/coverage-final.json
 
-      - name: 🧬 Remove stale coverage (main)
+      - name: 🧹 Remove stale coverage (main)
         if: github.ref == 'refs/heads/main'
         run: |
           node ./tools/scripts/coverage-clean.js
