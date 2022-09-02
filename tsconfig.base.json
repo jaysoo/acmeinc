@@ -17,7 +17,8 @@
     "paths": {
       "@acmeinc/lib1": ["libs/lib1/src/index.ts"],
       "@acmeinc/lib2": ["libs/lib2/src/index.ts"],
-      "@acmeinc/lib3": ["libs/lib3/src/index.ts"]
+      "@acmeinc/lib3": ["libs/lib3/src/index.ts"],
+      "@acmeinc/lib4": ["libs/lib4/src/index.ts"]
     }
   },
   "exclude": ["node_modules", "tmp"]
